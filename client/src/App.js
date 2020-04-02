@@ -26,6 +26,7 @@ function Copyright() {
   );
 }
 
+
 const useStyles = makeStyles((theme) => ({
   paper: {
     marginTop: theme.spacing(8),
@@ -77,7 +78,7 @@ export default function SignIn() {
           Powered by Spotify, Songkick, Google APIs
         </Typography>
 
-        <form className={classes.form} noValidate>
+        <form className={classes.form} noValidate action="http://localhost:3001/login">
           <Button
             type="submit"
             fullWidth
