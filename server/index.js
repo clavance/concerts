@@ -2,6 +2,7 @@
 
 const express = require('express'),
       app = express(),
+      base64 = require('base-64'),
       cors = require('cors'),
       cookieParser = require('cookie-parser'),
       cryptoRandomString = require('crypto-random-string'),
@@ -17,12 +18,10 @@ var client_id = keys.client_id,
     client_secret = keys.client_secret,
     redirect_uri = keys.redirect_uri,
     grant_type = keys.grant_type,
-    state_key = 'spotify_auth_state',
+    state_cookie = 'spotify_auth_state',
     grant_type = 'authorization_code';
 
-app.use(cors());
-app.use(cookieParser());
-app.use(express.static(DIST_DIR));
+app.use(cookieParser()).use(express.static(DIST_DIR)).use(cors());
 
 
 app.get('/', (req, res) => {
@@ -34,7 +33,7 @@ app.get("/login", (req, res) => {
   var scopes = 'user-read-private user-read-email',
       state = cryptoRandomString({length: 16, type: 'url-safe'});
 
-      console.log(state);
+  res.cookie(state_cookie, state);
 
   res.redirect('https://accounts.spotify.com/authorize' +
   '?response_type=code' +
@@ -48,10 +47,11 @@ app.get("/login", (req, res) => {
 app.get("/callback", (req, res) => {
   var code = req.query.code || null,
       state = req.query.state || null,
-      storedState = req.cookies ? req.cookies[state_key] : null;
+      storedState = req.cookies ? req.cookies[state_cookie] : null;
 
-      console.log(state);
-      console.log(req.cookies);
+      // console.log(state);
+      // console.log("express cookie", req);
+      // console.log("cookieparser cookie", req.cookies);
 
     // check state matches GET
     if (state === null || state !== storedState) {
@@ -59,7 +59,7 @@ app.get("/callback", (req, res) => {
     }
 
     else {
-      res.clearCookie(state_key);
+      res.clearCookie(state_cookie);
 
     request.post({
         url: "https://accounts.spotify.com/api/token",
@@ -70,15 +70,15 @@ app.get("/callback", (req, res) => {
           grant_type
         },
         headers: {
-          'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+          'Authorization': 'Basic ' + base64.encode(client_id + ':' + client_secret)
         },
         json: true
       },
 
       (err, response, body) => {
         if (!err && response.statusCode === 200) {
-          global.access_token = JSON.parse(body).access_token; //get the access token from response
-          global.refresh_token = JSON.parse(body).refresh_token;
+          global.access_token = body.access_token; //get the access token from response
+          global.refresh_token = body.refresh_token;
           console.log("oauth callback response: ", body);
           console.log("access token: ", access_token);
           console.log("refresh token: ", refresh_token);
