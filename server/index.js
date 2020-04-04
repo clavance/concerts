@@ -30,7 +30,7 @@ app.get('/', (req, res) => {
 
 // state not required, but recommended
 app.get("/login", (req, res) => {
-  var scopes = 'user-read-private user-read-email',
+  var scopes = 'user-read-private user-read-email user-library-read',
       state = cryptoRandomString({length: 16, type: 'url-safe'});
 
   res.cookie(state_cookie, state);
@@ -48,10 +48,6 @@ app.get("/callback", (req, res) => {
   var code = req.query.code || null,
       state = req.query.state || null,
       storedState = req.cookies ? req.cookies[state_cookie] : null;
-
-      // console.log(state);
-      // console.log("express cookie", req);
-      // console.log("cookieparser cookie", req.cookies);
 
     // check state matches GET
     if (state === null || state !== storedState) {
@@ -77,12 +73,12 @@ app.get("/callback", (req, res) => {
 
       (err, response, body) => {
         if (!err && response.statusCode === 200) {
-          global.access_token = body.access_token; //get the access token from response
+          global.access_token = body.access_token;
           global.refresh_token = body.refresh_token;
           console.log("oauth callback response: ", body);
           console.log("access token: ", access_token);
           console.log("refresh token: ", refresh_token);
-          res.redirect("/pending");
+          res.redirect("/profile");
         }
       }
     );
@@ -90,9 +86,73 @@ app.get("/callback", (req, res) => {
 });
 
 
+// refresh token
+app.get("/refresh", (req, res) => {
 
-app.listen(port, function () {
- console.log('App listening on port: ' + port);
+  request.post({
+    url: 'https://accounts.spotify.com/api/token',
+    form: {
+      grant_type,
+      refresh_token
+    },
+    headers: {
+      'Authorization': 'Basic ' + base64.encode(client_id + ':' + client_secret)
+    },
+    json: true
+  },
+
+    (err, response, body) => {
+      console.log(err);
+    if (!err && response.statusCode === 200) {
+      access_token = body.access_token;
+      console.log(access_token);
+
+      // res.send({
+      //   'access_token': access_token
+      // });
+    }
+  });
+});
+
+
+app.get("/profile", (req, res) => {
+    request.get("https://api.spotify.com/v1/me", {
+      headers: {
+        'Authorization': 'Bearer ' + access_token
+      },
+      json: true
+    },
+
+    (err, response, body) => {
+      console.log("user profile:", body);
+
+      var display_name = body.display_name;
+      console.log("username:", display_name);
+
+      res.redirect("/tracks");
+    }
+  )
+});
+
+app.get("/tracks", (req, res) => {
+  request.get("https://api.spotify.com/v1/me/tracks", {
+    headers: {
+      'Authorization': 'Bearer ' + access_token
+    },
+    json: true
+  },
+
+  (err, response, body) => {
+    console.log("tracks:", body);
+    res.json({
+      body: body
+    });
+  })
+});
+
+
+app.listen(port, () => {
+  console.log('App listening on port: ' + port);
 });
 
 
