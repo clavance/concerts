@@ -8,6 +8,7 @@ const express = require('express'),
       cryptoRandomString = require('crypto-random-string'),
       keys = require('../client/src/keys.json'),
       path = require('path'),
+      redis = require('redis'),
       request = require('request'),
       router = express.Router(),
       DIST_DIR = path.join(__dirname, '../client/public/'),
@@ -21,8 +22,34 @@ var client_id = keys.client_id,
     state_cookie = 'spotify_auth_state',
     grant_type = 'authorization_code';
 
-app.use(cookieParser()).use(express.static(DIST_DIR)).use(cors());
+// set up redis
+var redisPort = process.env.REDIS_PORT || 6379,
+    redisHost = process.env.REDIS_HOST;
+    // redisAuth = process.env.REDIS_AUTH || null;
 
+var redisClient = redis.createClient({
+  port: redisPort,
+  host: redisHost,
+  retry_strategy: () => 1000
+});
+
+console.log("redis", redisClient);
+console.log(process.env.REDIS_HOST);
+console.log(process.env.REDIS_PORT);
+
+redisClient.on("error", (err) => {
+  console.error('Redis client error: ' + error.message);
+  console.error(error.stack);
+});
+
+redisClient.on("connect", () => {
+  console.log("Connected to Redis " + redisHost + ":" + redisPort);
+});
+
+// if pub/sub, use different client
+// const redisPublisher = redisClient.duplicate();
+
+app.use(cookieParser()).use(express.static(DIST_DIR)).use(cors());
 
 app.get('/', (req, res) => {
  res.sendFile(HTML_FILE);
@@ -134,6 +161,7 @@ app.get("/profile", (req, res) => {
   )
 });
 
+
 app.get("/tracks", (req, res) => {
   request.get("https://api.spotify.com/v1/me/tracks", {
     headers: {
@@ -144,9 +172,33 @@ app.get("/tracks", (req, res) => {
 
   (err, response, body) => {
     console.log("tracks:", body);
+
+// nested for loop?
+    for (var i=0; i<body.items.length; i++) {
+      for (var j=0; j<body.items[i].track.artists.length; j++) {
+        var artist = body.items[i].track.artists[j].name;
+        console.log("artist", artist);
+        // "SET" IF NOT EXISTS (key: artist, value:"" for now)
+        redisClient.setnx(artist, "", (err)=>{
+          if (err) console.error("Redis client error:", err);
+          console.log("!!!");
+        });
+
+        console.log("???");
+
+        // GET to check artist saved
+        redisClient.get(artist, (err, value)=>{
+          if (err) throw err;
+          console.log("value:", value);
+        });
+
+      }
+    }
+
     res.json({
       body: body
     });
+
   })
 });
 
