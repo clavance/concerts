@@ -156,10 +156,13 @@ app.get("/profile", (req, res) => {
       var display_name = body.display_name;
       console.log("username:", display_name);
 
-      res.redirect("/tracks");
+      res.redirect("http://localhost:3000/main");
     }
   )
 });
+
+
+
 
 
 app.get("/tracks", (req, res) => {
