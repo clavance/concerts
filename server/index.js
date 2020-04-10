@@ -19,6 +19,7 @@ var client_id = keys.client_id,
     client_secret = keys.client_secret,
     redirect_uri = keys.redirect_uri,
     grant_type = keys.grant_type,
+    songkick_api_key = keys.songkick_api_key,
     state_cookie = 'spotify_auth_state',
     grant_type = 'authorization_code';
 
@@ -162,9 +163,6 @@ app.get("/profile", (req, res) => {
 });
 
 
-
-
-
 app.get("/tracks", (req, res) => {
   request.get("https://api.spotify.com/v1/me/tracks", {
     headers: {
@@ -198,9 +196,36 @@ app.get("/tracks", (req, res) => {
     res.json({
       body: body
     });
-
   })
 });
+
+// search for artist ID with artist name
+// app.get("/ids", (req, res) => {
+//   request.get("https://api.songkick.com/api/3.0/search/artists.json?apikey="
+//               + songkick_api_key + "&query=" + artist,
+//
+//   (err, response, body) => {
+//     // get the correct Songkick artist ID
+//     // (there may be multiple results, see API's json result)
+//     for (var k=0; k<body.resultsPage.artist.length; k++) {
+//       if (body.body.resultsPage.results.artist[k].displayName == artist) {
+//           var id = body.resultsPage.results.artist[k].id;
+//       }
+//     }
+//
+//     "https://api.songkick.com/api/3.0/artists/" + id +
+//     "/calendar.json?apikey=" + songkick_api_key +
+//     "&min_date=" + start_date +
+//     "&max_date=" + end_date
+//
+//
+//
+//   }
+//
+//   res.json({
+//     body: body
+//   });
+// })
 
 
 app.listen(port, () => {
